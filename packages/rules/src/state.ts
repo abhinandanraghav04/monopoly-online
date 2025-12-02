@@ -7,7 +7,7 @@ import {
   Money,
   BoardCoord
 } from "./types";
-import { PlayerState, Property, Tile, isOwnableTile } from "./entities";
+import { PlayerState, Property, GameTile, isOwnableTile } from "./entities";
 import { DiceRollResult } from "./dice";
 
 export interface GameConfig {
@@ -15,7 +15,7 @@ export interface GameConfig {
   seed: number | string;
   startingCash: Money;
   goBonus: Money;
-  board: Tile[];
+  board: GameTile[];
   properties: Record<PropertyId, Property>;
   playerOrder: PlayerId[];
 }
@@ -67,12 +67,12 @@ export function getCurrentPlayer(state: GameState): PlayerState {
   return state.players[state.currentPlayerId];
 }
 
-export function getTileAtPosition(state: GameState, position: BoardCoord): Tile {
+export function getTileAtPosition(state: GameState, position: BoardCoord): GameTile {
   const index = position % state.config.board.length;
   return state.config.board[index];
 }
 
-export function getTileForPlayer(state: GameState, playerId: PlayerId): Tile {
+export function getTileForPlayer(state: GameState, playerId: PlayerId): GameTile {
   const player = state.players[playerId];
   return getTileAtPosition(state, player.position);
 }
@@ -112,7 +112,7 @@ export function cloneGameState(state: GameState): GameState {
   };
 }
 
-export function ownableTilePropertyId(tile: Tile): PropertyId | null {
+export function ownableTilePropertyId(tile: GameTile): PropertyId | null {
   if (!isOwnableTile(tile)) {
     return null;
   }

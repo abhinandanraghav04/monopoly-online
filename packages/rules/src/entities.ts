@@ -67,7 +67,7 @@ export type RailroadTile = {
   propertyId: PropertyId;
 };
 
-export type Tile =
+export type GameTile =
   | GoTile
   | PropertyTile
   | ChanceTile
@@ -89,14 +89,14 @@ export interface PlayerState {
   getOutOfJailCards: number;
 }
 
-export const OWNABLE_TILE_KINDS: Tile["kind"][] = [
+export const OWNABLE_TILE_KINDS: GameTile["kind"][] = [
   "PROPERTY",
   "UTILITY",
   "RAILROAD"
 ];
 
 export function isOwnableTile(
-  tile: Tile
+  tile: GameTile
 ): tile is PropertyTile | UtilityTile | RailroadTile {
   return OWNABLE_TILE_KINDS.includes(tile.kind);
 }
