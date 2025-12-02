@@ -12,6 +12,10 @@ Unified TypeScript rules engine for a Monopoly-inspired board game. This package
 - **Shared Types**: Unified type system covering board definitions, runtime entities, game IDs, phases, player state, and monetary units.
 - **Comprehensive Tests**: 78 Vitest specs covering board validation, movement helpers, dice, RNG, reducer logic, event sequencing, and end-to-end simulations.
 
+## Quick Start & Deployment
+
+Looking to get the full Monopoly Online experience (frontend + backend) running quickly? See the consolidated [Quick Start guide](./QUICKSTART.md) and the detailed [Production Deployment guide](./DEPLOYMENT.md).
+
 ## Installation
 
 ```bash
@@ -144,6 +148,10 @@ npm run test --workspace @project/rules
 ```
 
 All 78 tests pass (40 board tests + 38 engine tests).
+
+## Deployment
+
+For production deployment instructions (Vercel frontend, Heroku/Railway backend, environment setup, and load testing script) see [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ## Repository Layout
 
