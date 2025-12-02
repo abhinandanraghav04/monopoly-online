@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: monopoly-server
+    env: node
+    region: singapore
+    plan: free
+    rootDir: packages/server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        value: monopoly-nexus-secret-key-change-in-production
+      - key: DATABASE_URL
+        value: sqlite:///./monopoly.db
+      - key: CORS_ORIGIN
+        value: https://monopoly-online-cyan.vercel.app
