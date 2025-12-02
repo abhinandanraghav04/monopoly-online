@@ -1,14 +1,16 @@
-# Monopoly Board Models
+# Monopoly Rules Engine
 
-Configurable board models for a Monopoly-like game with support for multiple board sizes.
+Unified TypeScript rules engine for a Monopoly-inspired board game. This package combines configurable board models with a deterministic multiplayer-ready core engine, allowing you to build rich gameplay experiences across UI, audio, lobby, and deployment layers.
 
 ## Features
 
-- **Four board sizes**: 6x6, 8x8, 12x12, and 16x16
-- **Property groups**: Configurable monopoly color groups with economic data
-- **Movement helpers**: Navigate the board clockwise with automatic wrapping
-- **Economic presets**: Tunable starting cash, GO salary, and rent multipliers
-- **Special tiles**: GO, Jail, Free Parking, Go To Jail, Chance, Community Chest, Tax, Utilities, Railroads
+- **Board Model Library**: Four prebuilt boards (`QUICK_6x6`, `CLASSIC_8x8`, `EXTENDED_12x12`, `MEGA_16x16`) with validated layouts, tile metadata, and property groups.
+- **Economy Presets**: Tunable presets with starting cash, GO salary, rent tables, and dynamic factory helpers for custom boards.
+- **Core Game Engine**: Deterministic state reducer with phases (`Roll`, `Buy`, `Resolve`, `EndTurn`, etc.), property ownership, rent collection, and bankruptcy handling.
+- **Deterministic RNG**: Seedable random number generator powering dice rolls and simulations for reproducible playthroughs.
+- **Simulation Runner**: High-level helpers to execute single or multiple turns for AI, testing, or autoplay scenarios.
+- **Shared Types**: Unified type system covering board definitions, runtime entities, game IDs, phases, player state, and monetary units.
+- **Comprehensive Tests**: 78 Vitest specs covering board validation, movement helpers, dice, RNG, reducer logic, event sequencing, and end-to-end simulations.
 
 ## Installation
 
@@ -21,81 +23,86 @@ npm install
 ### Importing Board Models
 
 ```typescript
-import { QUICK_6x6, CLASSIC_8x8, EXTENDED_12x12, MEGA_16x16 } from './packages/rules/src';
+import { CLASSIC_8x8 } from './packages/rules/src';
 
 const board = CLASSIC_8x8;
 console.log(board.config.tileCount); // 32
 console.log(board.economy.startingCash); // 1500
 ```
 
-### Movement Helpers
+### Using Movement Helpers
 
 ```typescript
-import { nextIndex, isCorner } from './packages/rules/src';
+import { nextIndex, isCorner, CLASSIC_8x8 } from './packages/rules/src';
 
-const currentIndex = 5;
-const nextPosition = nextIndex(CLASSIC_8x8, currentIndex, 7);
-
-if (isCorner(CLASSIC_8x8, nextPosition)) {
-  console.log('Landed on a corner!');
-}
+const start = CLASSIC_8x8.config.startTileIndex;
+const next = nextIndex(CLASSIC_8x8, start, 7);
+console.log(isCorner(CLASSIC_8x8, next));
 ```
 
-### Property Groups
+### Running the Core Engine
 
 ```typescript
-const groups = CLASSIC_8x8.groups;
+import {
+  createInitialGameState,
+  reduceGameState,
+  runSingleTurn,
+  createRng,
+  diceRoll,
+  type GameAction,
+  type GameState
+} from './packages/rules/src';
 
-Object.entries(groups).forEach(([groupId, group]) => {
-  console.log(`${group.label}: ${group.monopolySize} properties`);
-  console.log(`  Properties: ${group.propertyIds.join(', ')}`);
-});
+const rng = createRng('seed-123');
+const config = {
+  gameId: 'game-1',
+  seed: 42,
+  startingCash: 1500,
+  goBonus: 200,
+  board: CLASSIC_8x8.config.tiles.map(tile => ({
+    kind: tile.kind,
+    name: tile.name,
+    propertyId: tile.kind === 'PROPERTY' ? tile.propertyId : undefined,
+    amount: tile.kind === 'TAX' ? tile.amount : undefined,
+    payout: tile.kind === 'GO' ? CLASSIC_8x8.economy.goSalary : undefined,
+  })),
+  properties: Object.fromEntries(
+    Object.values(CLASSIC_8x8.economy.properties).map(property => [
+      property.id,
+      {
+        id: property.id,
+        name: property.id,
+        purchasePrice: property.price,
+        baseRent: property.rent.base,
+        rentWithHouses: property.rent.houses,
+        houseCost: property.houseCost,
+        group: property.groupId,
+        type: 'PROPERTY' as const,
+      }
+    ])
+  ),
+  playerOrder: ['p1', 'p2']
+};
+
+let state = createInitialGameState(config);
+const result = reduceGameState(state, { type: 'ROLL', playerId: 'p1' }, rng);
+state = result.state;
+console.log(result.events);
 ```
 
-### Accessing Tile Data
+### Simulation Helpers
 
 ```typescript
-const tiles = CLASSIC_8x8.config.tiles;
+import { runMultipleTurns, createRng, createInitialGameState } from './packages/rules/src';
 
-tiles.forEach((tile) => {
-  if (tile.kind === 'PROPERTY') {
-    console.log(`${tile.name}: $${tile.price}`);
-    console.log(`  Base rent: $${tile.rent.base}`);
-    console.log(`  With 1 house: $${tile.rent.houses[0]}`);
-    console.log(`  With hotel: $${tile.rent.hotel}`);
-  }
-});
+const rng = createRng(12345);
+const initialState = createInitialGameState(config);
+const { state: finalState, events } = runMultipleTurns(initialState, rng, 10);
+console.log(finalState.turn); // 6 (wraps after each player ends turn)
+console.log(events.length);
 ```
-
-## Board Sizes
-
-### Quick 6x6 (24 tiles)
-- Fast-paced gameplay
-- 12 properties across 6 color groups
-- Starting cash: $1000
-- GO salary: $150
-
-### Classic 8x8 (32 tiles)
-- Traditional Monopoly experience
-- 18 properties across 8 color groups
-- Starting cash: $1500
-- GO salary: $200
-
-### Extended 12x12 (48 tiles)
-- Longer games with more properties
-- 30 properties across 10 color groups
-- Starting cash: $2500
-- GO salary: $300
-
-### Mega 16x16 (64 tiles)
-- Epic gameplay experience
-- 46 properties across 12 color groups
-- Starting cash: $3000
-- GO salary: $400
 
 ## Creating Custom Boards
-
-You can create custom board models using the `buildBoardModel` function:
 
 ```typescript
 import { buildBoardModel, buildEconomy, CLASSIC_PRESET } from './packages/rules/src';
@@ -121,26 +128,48 @@ const customBoard = buildBoardModel({
   layout: [
     { type: 'GO' },
     { type: 'PROPERTY', propertyId: 'property-1' },
-    // ... add 22 more tiles
+    // ... add remaining tiles
   ],
 });
 ```
 
 ## Testing
 
-Run the test suite:
-
 ```bash
+# Root tests (board models)
 npm test
+
+# Package tests (core engine)
+npm run test --workspace @project/rules
 ```
 
-The tests cover:
-- Valid board configurations
-- Correct tile counts and side lengths
-- Movement helpers (nextIndex, isCorner)
-- Property group consistency
-- Rent table validation
-- Special tile placement
+All 78 tests pass (40 board tests + 38 engine tests).
+
+## Repository Layout
+
+```
+packages/rules/
+├── README.md               # Package-specific docs
+├── package.json            # Workspace package manifest
+├── src/
+│   ├── boards/             # Board definitions
+│   ├── economy/            # Economy presets + factory
+│   ├── __tests__/          # Engine unit tests
+│   ├── actions.ts          # Game actions
+│   ├── boardHelpers.ts     # Movement + group detection
+│   ├── dice.ts             # Dice mechanics
+│   ├── entities.ts         # Runtime entities & GameTile
+│   ├── events.ts           # Event definitions
+│   ├── index.ts            # Unified exports
+│   ├── modelBuilder.ts     # Board model factory
+│   ├── reducer.ts          # State reducer
+│   ├── rng.ts              # Seeded RNG
+│   ├── simulation.ts       # Simulation helpers
+│   └── state.ts            # Game state helpers
+└── tsconfig.json
+```
+
+For merge details and verification logs, see [`MERGE_VERIFICATION.md`](./MERGE_VERIFICATION.md).
 
 ## License
 
