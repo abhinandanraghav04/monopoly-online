@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  background-color: theme('colors.background.primary');
+  color: white;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    theme('colors.background.primary'),
+    theme('colors.background.secondary')
+  );
+  margin: 0;
+}
+
+a {
+  color: theme('colors.primary.300');
+}
