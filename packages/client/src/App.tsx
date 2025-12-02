@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { socketService } from './services/socketService';
 import { useUserStore } from './services/userService';
 import './App.css';
 
 function App() {
   const { currentUser, createProfile } = useUserStore();
+  const location = useLocation();
 
   useEffect(() => {
     socketService.connect();
@@ -31,23 +32,36 @@ function App() {
 
   return (
     <div className="app">
-      <nav className="app-nav">
-        <h1>Monopoly</h1>
-        <div className="app-nav__links">
-          <Link to="/lobby">Lobby</Link>
-          {currentUser && <Link to={`/profile/${currentUser.id}`}>Profile</Link>}
-          <Link to="/leaderboard">Leaderboard</Link>
+      <nav className="app-nav" aria-label="Main navigation">
+        <div className="app-nav__branding">
+          <span className="app-nav__badge" aria-hidden="true">R</span>
+          <h1>Monopoly Nexus</h1>
+        </div>
+        <div className="app-nav__links" role="list">
+          <NavLink to="/lobby" className={({ isActive }) => isActive ? 'active' : ''}>Lobby</NavLink>
+          {currentUser && (
+            <NavLink to={`/profile/${currentUser.id}`} className={({ isActive }) => isActive ? 'active' : ''}>
+              Profile
+            </NavLink>
+          )}
+          <NavLink to="/leaderboard" className={({ isActive }) => isActive ? 'active' : ''}>
+            Leaderboard
+          </NavLink>
         </div>
         {currentUser && (
-          <div className="app-nav__user">
-            <img src={currentUser.avatar} alt={currentUser.username} />
-            <span>{currentUser.username}</span>
-            <span className="app-nav__level">Lvl {currentUser.level}</span>
+          <div className="app-nav__user" aria-live="polite">
+            <img src={currentUser.avatar} alt={`${currentUser.username}'s avatar`} />
+            <div>
+              <span className="app-nav__username">{currentUser.username}</span>
+              <span className="app-nav__level">Lvl {currentUser.level}</span>
+            </div>
           </div>
         )}
       </nav>
-      <main className="app-main">
-        <Outlet />
+      <main className="app-main" role="main">
+        <div key={location.pathname} className="app-main__transition">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

@@ -2,31 +2,64 @@ import { useEffect, useState } from 'react';
 import { useLeaderboardStore } from '../services/leaderboardService';
 import { useUserStore } from '../services/userService';
 import type { LeaderboardSort, LeaderboardFilterRange } from '../services/leaderboardService';
+import { useToast } from '../components/ToastContainer';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import './Leaderboard.css';
 
 export function Leaderboard() {
   const { currentUser, friends, loadFriends } = useUserStore();
-  const { entries, total, page, loading, range, sort, fetchLeaderboard, setRange, setSort } = useLeaderboardStore();
+  const { entries, total, page, loading, range, sort, error, fetchLeaderboard, setRange, setSort } = useLeaderboardStore();
+  const { showToast } = useToast();
   const [viewMode, setViewMode] = useState<'global' | 'friends'>('global');
 
   useEffect(() => {
-    fetchLeaderboard();
+    fetchLeaderboard().catch(() => {
+      showToast('Failed to load leaderboard', 'error');
+    });
     if (currentUser) {
       loadFriends();
     }
-  }, [fetchLeaderboard, currentUser, loadFriends]);
+  }, [fetchLeaderboard, currentUser, loadFriends, showToast]);
+
+  useEffect(() => {
+    if (error) {
+      showToast(error, 'error');
+    }
+  }, [error, showToast]);
+
+  const sortLabels: Record<LeaderboardSort, string> = {
+    wins: 'wins',
+    winRate: 'win rate',
+    level: 'level'
+  };
+
+  const rangeLabels: Record<LeaderboardFilterRange, string> = {
+    'all-time': 'All-Time',
+    month: 'This Month',
+    week: 'This Week'
+  };
 
   const handleSortChange = (newSort: LeaderboardSort) => {
+    if (sort === newSort) return;
     setSort(newSort);
+    showToast(`Sorting by ${sortLabels[newSort]}`, 'info');
     fetchLeaderboard({ sort: newSort, page: 1 });
   };
 
   const handleRangeChange = (newRange: LeaderboardFilterRange) => {
+    if (range === newRange) return;
     setRange(newRange);
+    showToast(`Showing ${rangeLabels[newRange]} rankings`, 'info');
   };
 
   const handlePageChange = (newPage: number) => {
     fetchLeaderboard({ page: newPage });
+    showToast(`Loading page ${newPage}`, 'info', 1500);
+  };
+
+  const handleViewModeChange = (mode: 'global' | 'friends') => {
+    setViewMode(mode);
+    showToast(mode === 'global' ? 'Displaying global rankings' : 'Displaying friends rankings', 'info');
   };
 
   const displayEntries = viewMode === 'friends'
@@ -42,13 +75,17 @@ export function Leaderboard() {
         <div className="leaderboard__view-toggle">
           <button
             className={viewMode === 'global' ? 'active' : ''}
-            onClick={() => setViewMode('global')}
+            onClick={() => handleViewModeChange('global')}
+            aria-label="Show global leaderboard"
+            aria-pressed={viewMode === 'global'}
           >
             Global
           </button>
           <button
             className={viewMode === 'friends' ? 'active' : ''}
-            onClick={() => setViewMode('friends')}
+            onClick={() => handleViewModeChange('friends')}
+            aria-label="Show friends leaderboard"
+            aria-pressed={viewMode === 'friends'}
           >
             Friends
           </button>
@@ -102,25 +139,28 @@ export function Leaderboard() {
       </div>
 
       {loading ? (
-        <div className="leaderboard__loading">Loading rankings...</div>
+        <div className="leaderboard__loading" role="status" aria-live="polite">
+          <LoadingSpinner size="large" text="Loading rankings..." />
+        </div>
       ) : displayEntries.length === 0 ? (
         <div className="leaderboard__empty">No entries found.</div>
       ) : (
-        <div className="leaderboard__table">
-          <div className="leaderboard__header-row">
-            <span>Rank</span>
-            <span>Player</span>
-            <span>Level</span>
-            <span>Wins</span>
-            <span>Losses</span>
-            <span>Win Rate</span>
+        <div className="leaderboard__table" role="table" aria-label="Leaderboard standings">
+          <div className="leaderboard__header-row" role="row">
+            <span role="columnheader">Rank</span>
+            <span role="columnheader">Player</span>
+            <span role="columnheader">Level</span>
+            <span role="columnheader">Wins</span>
+            <span role="columnheader">Losses</span>
+            <span role="columnheader">Win Rate</span>
           </div>
           {displayEntries.map((entry) => (
             <div
               key={entry.id}
               className={`leaderboard__row ${currentUser?.id === entry.id ? 'leaderboard__row--current' : ''}`}
+              role="row"
             >
-              <div className="leaderboard__rank">
+              <div className="leaderboard__rank" role="cell">
                 {entry.rank <= 3 ? (
                   <span className={`leaderboard__medal leaderboard__medal--${entry.rank}`}>
                     {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : '🥉'}
@@ -129,14 +169,14 @@ export function Leaderboard() {
                   <span>{entry.rank}</span>
                 )}
               </div>
-              <div className="leaderboard__player">
+              <div className="leaderboard__player" role="cell">
                 <img src={entry.avatar} alt={entry.username} />
                 <span>{entry.username}</span>
               </div>
-              <div className="leaderboard__level">{entry.level}</div>
-              <div className="leaderboard__wins">{entry.wins}</div>
-              <div className="leaderboard__losses">{entry.losses}</div>
-              <div className="leaderboard__win-rate">{entry.winRate}%</div>
+              <div className="leaderboard__level" role="cell">{entry.level}</div>
+              <div className="leaderboard__wins" role="cell">{entry.wins}</div>
+              <div className="leaderboard__losses" role="cell">{entry.losses}</div>
+              <div className="leaderboard__win-rate" role="cell">{entry.winRate}%</div>
             </div>
           ))}
         </div>

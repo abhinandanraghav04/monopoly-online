@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useUserStore } from '../services/userService';
 import { useGameHistoryStore } from '../services/gameHistoryService';
 import { formatDistanceToNow, formatDuration } from '../utils/date';
+import { useToast } from '../components/ToastContainer';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import './Profile.css';
 
 export function Profile() {
   const { id } = useParams<{ id: string }>();
-  const { currentUser, friends, loadFriends, addFriend: addFriendAction } = useUserStore();
-  const { games, fetchHistory } = useGameHistoryStore();
+  const { currentUser, friends, loadFriends, addFriend: addFriendAction, loading: userLoading, error: userError } = useUserStore();
+  const { games, fetchHistory, loading: historyLoading, error: historyError } = useGameHistoryStore();
+  const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ username: '', avatar: '' });
   const [friendUsername, setFriendUsername] = useState('');
@@ -31,29 +34,68 @@ export function Profile() {
   };
 
   const handleSaveProfile = async () => {
-    await useUserStore.getState().updateProfile(editForm);
-    setIsEditing(false);
+    try {
+      await useUserStore.getState().updateProfile(editForm);
+      setIsEditing(false);
+      showToast('Profile updated successfully!', 'success');
+    } catch (error) {
+      showToast('Failed to update profile', 'error');
+    }
   };
 
   const handleAddFriend = async () => {
     if (friendUsername.trim()) {
-      await addFriendAction(friendUsername);
-      setFriendUsername('');
+      try {
+        await addFriendAction(friendUsername);
+        setFriendUsername('');
+        showToast(`${friendUsername} added to friends!`, 'success');
+      } catch (error) {
+        showToast(`Failed to add ${friendUsername}`, 'error');
+      }
+    } else {
+      showToast('Please enter a username', 'warning');
     }
   };
 
-  if (!currentUser) {
-    return <div className="profile__loading">Loading profile...</div>;
+  useEffect(() => {
+    if (userError) {
+      showToast(userError, 'error');
+    }
+    if (historyError) {
+      showToast(historyError, 'error');
+    }
+  }, [userError, historyError, showToast]);
+
+  const stats = useMemo(() => {
+    if (!currentUser) return null;
+    
+    const winRate = currentUser.totalGames === 0 ? 0 : Math.round((currentUser.wins / currentUser.totalGames) * 100);
+    const avgGameLength = games.length === 0 ? 0 : Math.round(games.reduce((sum, game) => sum + game.durationMinutes, 0) / games.length);
+    
+    const boardSizeCounts: Record<number, number> = {};
+    games.forEach((game) => {
+      boardSizeCounts[game.boardSize] = (boardSizeCounts[game.boardSize] ?? 0) + 1;
+    });
+    const favoriteBoardSize = Object.entries(boardSizeCounts).sort(([, a], [, b]) => b - a)[0]?.[0] ?? 'N/A';
+
+    return { winRate, avgGameLength, favoriteBoardSize };
+  }, [currentUser, games]);
+
+  if (userLoading || !currentUser) {
+    return (
+      <div className="profile__loading">
+        <LoadingSpinner size="large" text="Loading profile..." />
+      </div>
+    );
   }
 
-  const winRate = currentUser.totalGames === 0 ? 0 : Math.round((currentUser.wins / currentUser.totalGames) * 100);
-  const avgGameLength = games.length === 0 ? 0 : Math.round(games.reduce((sum, game) => sum + game.durationMinutes, 0) / games.length);
+  if (!stats) {
+    return <div className="profile__loading">Loading profile data...</div>;
+  }
 
-  const boardSizeCounts: Record<number, number> = {};
-  games.forEach((game) => {
-    boardSizeCounts[game.boardSize] = (boardSizeCounts[game.boardSize] ?? 0) + 1;
-  });
-  const favoriteBoardSize = Object.entries(boardSizeCounts).sort(([, a], [, b]) => b - a)[0]?.[0] ?? 'N/A';
+  const favoriteBoardDisplay = stats.favoriteBoardSize === 'N/A'
+    ? 'N/A'
+    : `${stats.favoriteBoardSize}x${stats.favoriteBoardSize}`;
 
   return (
     <div className="profile">
@@ -82,7 +124,7 @@ export function Profile() {
         </div>
         <div className="profile__stat-card">
           <h3>Win Rate</h3>
-          <p className="profile__stat-value">{winRate}%</p>
+          <p className="profile__stat-value">{stats.winRate}%</p>
         </div>
         <div className="profile__stat-card">
           <h3>Total Earnings</h3>
@@ -96,11 +138,11 @@ export function Profile() {
           <div className="profile__stats-details">
             <div className="profile__detail">
               <span className="profile__detail-label">Average Game Length</span>
-              <span className="profile__detail-value">{formatDuration(avgGameLength)}</span>
+              <span className="profile__detail-value">{formatDuration(stats.avgGameLength)}</span>
             </div>
             <div className="profile__detail">
               <span className="profile__detail-label">Favorite Board Size</span>
-              <span className="profile__detail-value">{favoriteBoardSize}x{favoriteBoardSize}</span>
+              <span className="profile__detail-value">{favoriteBoardDisplay}</span>
             </div>
           </div>
         </div>
@@ -126,7 +168,9 @@ export function Profile() {
         <div className="profile__section">
           <h2>Game History</h2>
           <div className="profile__game-history">
-            {games.length === 0 ? (
+            {historyLoading ? (
+              <LoadingSpinner text="Loading game history..." />
+            ) : games.length === 0 ? (
               <p className="profile__empty">No games played yet.</p>
             ) : (
               games.slice(0, 10).map((game) => (
