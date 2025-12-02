@@ -11,9 +11,12 @@
     "test": "vitest run",
     "dev:server": "npm run dev --workspace @monopoly/server",
     "dev:client": "npm run dev --workspace @monopoly/client",
-    "dev": "npm run dev:server & npm run dev:client"
+    "dev": "npm run dev:server & npm run dev:client",
+    "load-test": "node ./scripts/load-test.js",
+    "verify-deployment": "bash ./scripts/verify-deployment.sh"
   },
   "devDependencies": {
+    "socket.io-client": "^4.6.0",
     "typescript": "^5.4.0",
     "vitest": "^1.2.0"
   }
