@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { getRooms, type Room } from '../services/api';
 import { socketService } from '../services/socketService';
 import { useUserStore } from '../services/userService';
+import { useToast } from '../components/ToastContainer';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import './Lobby.css';
 
 export function Lobby() {
   const { currentUser } = useUserStore();
+  const { showToast } = useToast();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -25,8 +28,10 @@ export function Lobby() {
       setRooms(data);
     } catch (error) {
       console.error(error);
+      showToast('Unable to load rooms. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -52,7 +57,7 @@ export function Lobby() {
   const handleCreateRoom = () => {
     if (!currentUser) return;
     if (!createForm.name) {
-      alert('Please enter a room name');
+      showToast('Please enter a room name', 'warning');
       return;
     }
 
@@ -69,11 +74,15 @@ export function Lobby() {
 
     setShowCreateModal(false);
     setCreateForm({ name: '', boardSize: 8, startingMoney: 1500, maxPlayers: 4 });
+    showToast(`Room "${createForm.name}" created successfully!`, 'success');
     setTimeout(loadRooms, 500);
   };
 
   const handleJoinRoom = (room: Room) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      showToast('You need to sign in to join rooms.', 'warning');
+      return;
+    }
 
     socketService.joinRoom(room.id, {
       id: currentUser.id,
@@ -85,6 +94,7 @@ export function Lobby() {
     });
 
     setSelectedRoom(room);
+    showToast(`Joined ${room.name}`, 'success');
     setTimeout(loadRooms, 500);
   };
 
@@ -92,6 +102,7 @@ export function Lobby() {
     if (!currentUser || !selectedRoom) return;
 
     socketService.leaveRoom(selectedRoom.id, currentUser.id);
+    showToast(`Left ${selectedRoom.name}`, 'info');
     setSelectedRoom(null);
     setTimeout(loadRooms, 500);
   };
@@ -103,6 +114,8 @@ export function Lobby() {
     const isReady = player?.isReady ?? false;
 
     socketService.toggleReady(selectedRoom.id, currentUser.id, !isReady);
+
+    showToast(isReady ? 'You are no longer ready' : 'You are ready!', isReady ? 'warning' : 'success');
 
     setSelectedRoom({
       ...selectedRoom,
@@ -137,7 +150,9 @@ export function Lobby() {
       )}
 
       {loading ? (
-        <p>Loading rooms...</p>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+          <LoadingSpinner size="large" text="Loading rooms..." />
+        </div>
       ) : rooms.length === 0 ? (
         <p className="lobby__empty">No rooms available. Create one to get started!</p>
       ) : (
