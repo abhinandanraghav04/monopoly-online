@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
+  "private": true,
+  "workspaces": ["packages/*"],
   "scripts": {
     "build": "tsc --project tsconfig.json",
+    "build:workspaces": "npm run build --workspaces",
     "test": "vitest run"
   },
   "devDependencies": {
