@@ -9,3 +9,12 @@ export { MEGA_16x16 } from './boards/mega16x16';
 
 export { QUICK_PRESET, CLASSIC_PRESET, EXTENDED_PRESET, MEGA_PRESET } from './economy/presets';
 export { buildEconomy } from './economy/factory';
+
+export * from './entities';
+export * from './state';
+export * from './rng';
+export * from './dice';
+export * from './actions';
+export * from './events';
+export * from './reducer';
+export * from './simulation';
