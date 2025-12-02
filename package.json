@@ -8,7 +8,10 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "build:workspaces": "npm run build --workspaces",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev:server": "npm run dev --workspace @monopoly/server",
+    "dev:client": "npm run dev --workspace @monopoly/client",
+    "dev": "npm run dev:server & npm run dev:client"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
