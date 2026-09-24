@@ -1,4 +1,15 @@
-# Monopoly Rules Engine
+# Monopoly Online
+
+A real-time multiplayer board game in the style of Monopoly, playable in the browser with friends. I built it as a TypeScript monorepo to practise separating game logic from networking and UI.
+
+- **packages/rules**: a deterministic rules engine (turn phases, buying, rent, bankruptcy) with a seedable dice RNG, so any game can be replayed exactly for testing
+- **packages/server**: Node.js, Express and Socket.IO server that runs game rooms and keeps every player in sync
+- **packages/client**: React client with React Router and Zustand for state, talking to the server over Socket.IO
+- **Tests**: Vitest suites for the rules engine, plus a load-test script for the server
+
+---
+
+## Rules engine
 
 Unified TypeScript rules engine for a Monopoly-inspired board game. This package combines configurable board models with a deterministic multiplayer-ready core engine, allowing you to build rich gameplay experiences across UI, audio, lobby, and deployment layers.
 
